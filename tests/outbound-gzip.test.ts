@@ -84,7 +84,10 @@ describe('createProxy outbound gzip', () => {
       upstream: 'https://api.anthropic.com',
       transform: { compress: true },
     });
-    const bigText = 'Repeat structured system context block for gzip verification. '.repeat(400);
+    const bigText = Array.from(
+      { length: 600 },
+      (_, i) => `rule_${i}: verify module_${(i * 7) % 97} config_${(i * 13) % 89} path=/src/pkg_${i % 41}/item_${i}.ts`,
+    ).join('\n');
     const reqBody = JSON.stringify({
       model: 'claude-fable-5',
       max_tokens: 64,
@@ -105,8 +108,9 @@ describe('createProxy outbound gzip', () => {
     expect(res.status).toBe(200);
     expect(capturedEncoding).toBe('gzip');
     expect(capturedBody).toBeInstanceOf(Uint8Array);
-    expect(capturedBody!.byteLength).toBeLessThan(reqBody.length);
-    const decoded = JSON.parse(gunzipSync(capturedBody!).toString('utf8')) as { model: string };
+    const inflated = gunzipSync(capturedBody!);
+    expect(capturedBody!.byteLength).toBeLessThan(inflated.byteLength);
+    const decoded = JSON.parse(inflated.toString('utf8')) as { model: string };
     expect(decoded.model).toBe('claude-fable-5');
   });
 
@@ -129,7 +133,15 @@ describe('createProxy outbound gzip', () => {
       model: 'gemini-4-neon-high',
       request: {
         systemInstruction: {
-          parts: [{ text: 'Detailed system instruction block for Gemini Cloud Code PA. '.repeat(450) }],
+          parts: [
+            {
+              text: Array.from(
+                { length: 600 },
+                (_, i) =>
+                  `gemini_rule_${i}: check service_${(i * 11) % 83} flag_${(i * 17) % 79} file=/repo/mod_${i % 37}/f_${i}.ts`,
+              ).join('\n'),
+            },
+          ],
         },
         contents: [{ role: 'user', parts: [{ text: 'hi' }] }],
       },
